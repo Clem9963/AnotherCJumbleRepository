@@ -60,7 +60,7 @@ void serveur()
 void client()
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	char buffer[1024] = "En Chine, quand t'as pas de riz, t'as pas de bol !";
+	char buffer[1024] = "Dietetik !";
 
 
 	if(sock == SOCKET_ERROR)
@@ -69,7 +69,7 @@ void client()
 		exit(errno);
 	}
 
-	struct hostent* hostinfo = gethostbyname("192.168.73.129"); /* infos du serveur */
+	struct hostent* hostinfo = gethostbyname("169.254.8.243"); /* infos du serveur */
 	if (hostinfo == NULL) /* gethostbyname n'a pas trouvé le serveur */
 	{
 		perror("gethostbyname");
