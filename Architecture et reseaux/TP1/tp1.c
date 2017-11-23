@@ -18,7 +18,23 @@ void client();
 
 int main()
 {
-	client();
+	pid_t pid = 0;
+	
+	pid = fork();
+	if (pid == -1)
+	{
+		fprintf(stderr, "Erreur lors de la création du nouveau processus\n");
+	}
+	else if (pid == 0)
+	{
+		serveur();
+	}
+	else
+	{
+		sleep(1);
+		client("localhost", "DIETETIK");
+	}
+	
 	return EXIT_SUCCESS;
 }
 
@@ -57,11 +73,11 @@ void serveur()
 	close(sock);
 }
 
-void client()
+void client(char adresse_serveur[], char message[])
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	char buffer[1024] = "Dietetik !";
-
+	char buffer[1024] = {0};
+	strcpy(buffer, message);
 
 	if(sock == SOCKET_ERROR)
 	{
@@ -69,7 +85,7 @@ void client()
 		exit(errno);
 	}
 
-	struct hostent* hostinfo = gethostbyname("169.254.8.243"); /* infos du serveur */
+	struct hostent* hostinfo = gethostbyname(adresse_serveur); /* infos du serveur */
 	if (hostinfo == NULL) /* gethostbyname n'a pas trouvé le serveur */
 	{
 		perror("gethostbyname");
