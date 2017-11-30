@@ -74,6 +74,14 @@ int main(int argc, char *argv[])
 			read_server(sock, buffer_recv);
 			printf("%s\n", buffer_recv);
 		}
+
+		if(FD_ISSET(STDIN_FILENO, &readfs))
+		{
+			/* des données sont disponibles sur l'entrée standard' */
+			/* traitement des données */
+			scanf("%s", buffer_send);
+			write_server(sock, buffer_send);
+		}
 	}
 	
 	return EXIT_SUCCESS;
