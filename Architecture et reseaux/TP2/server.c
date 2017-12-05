@@ -13,65 +13,78 @@
 #define TRUE 1
 #define FALSE 0
 
-int connect_socket(char* addresse, int port);
-int read_server(int sock, char *buffer);
-int write_server(int sock, char *buffer);
+int init_server(int port);
+int read_client(int sock, char *buffer, size_t buffer_size);
+int write_client(int sock, char *buffer);
+int max(int a, int b);
 
-int main(int argc, char *argv[])
+
+int main(int argc, char const *argv[])
 {
-	/* La fonction main attend 3 paramètres :
-	-> Le pseudo de l'utilisateur
-	-> L'adresse IP du serveur
+	/* La fonction main attend 1 paramètre :
 	-> Le port du serveur */
 
-	char buffer_send[1024] = "__init_buffer_send__";
-	char buffer_recv[1024] = "__init_buffer_recv__";
-	char *pseudo = NULL;
-	char *addresse = NULL;
+	char buffer_send[1024] = "";
+	char buffer_recv[1024] = "";	
+	
+	char *username = NULL;
 	int port = 0;
-	int sock = 0;
-	int ret = 0;
+
+	int server_sock = 0;
+	int client_sock = 0;
+	struct sockaddr_in client_sin;
+	socklen_t client_sinsize = 0;
+
+	int selector = 0;
+	int fd_max = 0;
 	fd_set readfs;
 
-	if (argc != 4)
+
+	if (argc != 2)
 	{
 		fprintf(stderr, "Arguments fournis incorrects\n");
 		return EXIT_FAILURE;
 	}
 
-	pseudo = argv[1];
-	addresse = argv[2];
-	port = atoi(argv[3]);
+	port = atoi(argv[1]);
 
-	sock = connect_socket(addresse, port);
-
-	write_server(sock, pseudo);
+	server_sock = init_server(port);
 
 	while(TRUE)
 	{
 		FD_ZERO(&readfs);
-		FD_SET(sock, &readfs);
+		FD_SET(server_sock, &readfs);
+		FD_SET(client_sock, &readfs);
 		FD_SET(STDIN_FILENO, &readfs);
+
+		fd_max = max(max(server_sock, client_sock), STDIN_FILENO);
 		
-		if((ret = select(sock + 1, &readfs, NULL, NULL, NULL)) < 0)
+		if((selector = select(fd_max + 1, &readfs, NULL, NULL, NULL)) < 0)
 		{
-			perror("select()");
+			perror("select Error : ");
 			exit(errno);
 		}
 
-		/* 
-		if(ret == 0)
+		/*if(selector == 0)
 		{
-			ici le code si la temporisation (dernier argument) est écoulée (il faut bien évidemment avoir mis quelque chose en dernier argument).
-		}	
-		*/
+			 // ici le code si la temporisation (dernier argument) est écoulée (il faut bien évidemment avoir mis quelque chose en dernier argument). 
+		}*/
 		
-		if(FD_ISSET(sock, &readfs))
+		
+		if(FD_ISSET(server_sock, &readfs))
 		{
-			/* des données sont disponibles sur le socket */
+			/* des données sont disponibles sur le socket du serveur */
 			/* traitement des données */
 
-			read_server(sock, buffer_recv);
+			client_sock = accept(server_sock, (struct sockaddr *)&client_sin, &client_sinsize); /* accepter un client */
+		}
+
+		if(FD_ISSET(client_sock, &readfs))
+		{
+			/* des données sont disponibles sur le socket client */
+			/* traitement des données */
+
+			read_client(client_sock, buffer_recv, sizeof(buffer_recv));
 			printf("%s\n", buffer_recv);
 		}
 
@@ -79,52 +92,48 @@ int main(int argc, char *argv[])
 		{
 			/* des données sont disponibles sur l'entrée standard' */
 			/* traitement des données */
-			scanf("%s", buffer_send);
-			write_server(sock, buffer_send);
+
+			fgets(buffer_send, sizeof(buffer_send), stdin);
+			write_client(client_sock, buffer_send);
 		}
 	}
-	
+
 	return EXIT_SUCCESS;
 }
 
-int connect_socket(char* addresse, int port)
+int init_server(int port)
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
-
+	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
+	
 	if(sock == SOCKET_ERROR)
 	{
 		perror("socket()");
 		exit(errno);
 	}
 
-	struct hostent* hostinfo = gethostbyname(addresse); /* infos du serveur */
-
-	if (hostinfo == NULL) /* gethostbyname n'a pas trouvé le serveur */
-	{
-		perror("gethostbyname()");
-		exit(errno);
-	}
-
-	printf("Connexion à %u.%u.%u.%u\n", hostinfo->h_addr[0], hostinfo->h_addr[1], hostinfo->h_addr[2], hostinfo->h_addr[3]);
-
-	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
-
-	sin.sin_addr = *(struct in_addr*) hostinfo->h_addr; /* on spécifie l'addresse */
+	sin.sin_addr.s_addr = htonl(INADDR_ANY); /* on accepte toute adresse */
 	sin.sin_port = htons(port); /* le port */
 	sin.sin_family = AF_INET; /* et le protocole (AF_INET pour IP) */
 
-	if (connect(sock, (struct sockaddr*) &sin, sizeof(struct sockaddr)) == SOCKET_ERROR) /* demande de connection */
+	if (bind(sock, (struct sockaddr*) &sin, sizeof(sin)) == SOCKET_ERROR) /* on lie le socket à sin */
 	{
-		perror("connect");
+		perror("bind()");
 		exit(errno);
+	}
+
+	if(listen(sock, 1) == SOCKET_ERROR) /* notre socket est prêt à écouter une connexion */
+	{
+    	perror("listen()");
+    	exit(errno);
 	}
 
 	return sock;
 }
 
-int read_server(int sock, char *buffer)
+int read_client(int sock, char *buffer, size_t buffer_size)
 {
-	if (recv(sock, buffer, sizeof(buffer), 0) == SOCKET_ERROR)
+	if (recv(sock, buffer, buffer_size, 0) == SOCKET_ERROR)
 	{
 		perror("recv");
 		exit(errno);
@@ -133,7 +142,7 @@ int read_server(int sock, char *buffer)
 	return EXIT_SUCCESS;
 }
 
-int write_server(int sock, char *buffer)
+int write_client(int sock, char *buffer)
 {
 	if (send(sock, buffer, strlen(buffer), 0) == SOCKET_ERROR)
 	{
@@ -142,4 +151,16 @@ int write_server(int sock, char *buffer)
 	}
 
 	return EXIT_SUCCESS;
+}
+
+int max(int a, int b)
+{
+	if (a > b)
+	{
+		return a;
+	}
+	else
+	{
+		return b;
+	}
 }

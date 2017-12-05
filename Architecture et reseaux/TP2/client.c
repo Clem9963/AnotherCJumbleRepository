@@ -13,8 +13,8 @@
 #define TRUE 1
 #define FALSE 0
 
-int connect_socket(char* addresse, int port);
-int read_server(int sock, char *buffer);
+int connect_socket(char* address, int port);
+int read_server(int sock, char *buffer, size_t buffer_size);
 int write_server(int sock, char *buffer);
 
 int main(int argc, char *argv[])
@@ -24,13 +24,13 @@ int main(int argc, char *argv[])
 	-> L'adresse IP du serveur
 	-> Le port du serveur */
 
-	char buffer_send[1024] = "__init_buffer_send__";
-	char buffer_recv[1024] = "__init_buffer_recv__";
-	char *pseudo = NULL;
-	char *addresse = NULL;
+	char buffer_send[1024] = "";
+	char buffer_recv[1024] = "";
+	char *username = NULL;
+	char *address = NULL;
 	int port = 0;
 	int sock = 0;
-	int ret = 0;
+	int selector = 0;
 	fd_set readfs;
 
 	if (argc != 4)
@@ -39,13 +39,13 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	pseudo = argv[1];
-	addresse = argv[2];
+	username = argv[1];
+	address = argv[2];
 	port = atoi(argv[3]);
 
-	sock = connect_socket(addresse, port);
+	sock = connect_socket(address, port);
 
-	write_server(sock, pseudo);
+	write_server(sock, username);
 
 	while(TRUE)
 	{
@@ -53,14 +53,14 @@ int main(int argc, char *argv[])
 		FD_SET(sock, &readfs);
 		FD_SET(STDIN_FILENO, &readfs);
 		
-		if((ret = select(sock + 1, &readfs, NULL, NULL, NULL)) < 0)
+		if((selector = select(sock + 1, &readfs, NULL, NULL, NULL)) < 0)
 		{
 			perror("select()");
 			exit(errno);
 		}
 
 		/* 
-		if(ret == 0)
+		if(selector == 0)
 		{
 			ici le code si la temporisation (dernier argument) est écoulée (il faut bien évidemment avoir mis quelque chose en dernier argument).
 		}	
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 			/* des données sont disponibles sur le socket */
 			/* traitement des données */
 
-			read_server(sock, buffer_recv);
+			read_server(sock, buffer_recv, sizeof(buffer_recv));
 			printf("%s\n", buffer_recv);
 		}
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 		{
 			/* des données sont disponibles sur l'entrée standard' */
 			/* traitement des données */
-			scanf("%s", buffer_send);
+			fgets(buffer_send, sizeof(buffer_send), stdin);
 			write_server(sock, buffer_send);
 		}
 	}
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 }
 
-int connect_socket(char* addresse, int port)
+int connect_socket(char* address, int port)
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -97,7 +97,7 @@ int connect_socket(char* addresse, int port)
 		exit(errno);
 	}
 
-	struct hostent* hostinfo = gethostbyname(addresse); /* infos du serveur */
+	struct hostent* hostinfo = gethostbyname(address); /* infos du serveur */
 
 	if (hostinfo == NULL) /* gethostbyname n'a pas trouvé le serveur */
 	{
@@ -109,7 +109,7 @@ int connect_socket(char* addresse, int port)
 
 	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
 
-	sin.sin_addr = *(struct in_addr*) hostinfo->h_addr; /* on spécifie l'addresse */
+	sin.sin_addr = *(struct in_addr*) hostinfo->h_addr; /* on spécifie l'adresse */
 	sin.sin_port = htons(port); /* le port */
 	sin.sin_family = AF_INET; /* et le protocole (AF_INET pour IP) */
 
@@ -122,9 +122,9 @@ int connect_socket(char* addresse, int port)
 	return sock;
 }
 
-int read_server(int sock, char *buffer)
+int read_server(int sock, char *buffer, size_t buffer_size)
 {
-	if (recv(sock, buffer, sizeof(buffer), 0) == SOCKET_ERROR)
+	if (recv(sock, buffer, buffer_size, 0) == SOCKET_ERROR)
 	{
 		perror("recv");
 		exit(errno);
