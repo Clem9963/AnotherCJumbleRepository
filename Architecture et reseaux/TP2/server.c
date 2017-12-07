@@ -33,7 +33,7 @@ int main(int argc, char const *argv[])
 	int server_sock = 0;
 	int client_sock = 0;
 	struct sockaddr_in client_sin;
-	socklen_t client_sinsize = 0;
+	socklen_t client_sinsize = sizeof(client_sin);
 
 	int selector = 0;
 	int fd_max = 0;

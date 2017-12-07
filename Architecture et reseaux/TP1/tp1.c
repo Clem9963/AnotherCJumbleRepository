@@ -42,7 +42,7 @@ void serveur()
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
-	struct sockaddr_in csin; int csock = 0; socklen_t sinsize = sizeof(sin); /* socket client */
+	struct sockaddr_in csin; int csock = 0; socklen_t sinsize = sizeof(csin); /* socket client */
 	char buffer[1024] = {0};
 	
 	if(sock == SOCKET_ERROR)
