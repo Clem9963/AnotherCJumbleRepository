@@ -26,12 +26,17 @@ int main(int argc, char *argv[])
 
 	char buffer_send[1024] = "";
 	char buffer_recv[1024] = "";
+
 	char *username = NULL;
 	char *address = NULL;
 	int port = 0;
+
 	int sock = 0;
 	int selector = 0;
 	fd_set readfs;
+
+	int bouncer = 0;
+	char *char_ptr = NULL;
 
 	if (argc != 4)
 	{
@@ -79,7 +84,24 @@ int main(int argc, char *argv[])
 		{
 			/* des données sont disponibles sur l'entrée standard' */
 			/* traitement des données */
-			fgets(buffer_send, sizeof(buffer_send), stdin);
+			if (fgets(buffer_send, sizeof(buffer_send), stdin) == NULL)
+			{
+				perror("fgets Error : ");
+				exit(errno);
+			}
+
+			char_ptr = strchr(buffer_send, '\n');
+			if (char_ptr != NULL)
+			{
+				*char_ptr = '\0';
+			}
+			else
+			{
+				while (bouncer != '\n' && bouncer != EOF)
+				{
+					bouncer = getchar();
+				}
+			}
 			write_server(sock, buffer_send);
 		}
 	}
@@ -135,7 +157,7 @@ int read_server(int sock, char *buffer, size_t buffer_size)
 
 int write_server(int sock, char *buffer)
 {
-	if (send(sock, buffer, strlen(buffer), 0) == SOCKET_ERROR)
+	if (send(sock, buffer, strlen(buffer)+1, 0) == SOCKET_ERROR) 	// Le +1 représente le caractère nul
 	{
 		perror("send");
 		exit(errno);

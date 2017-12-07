@@ -39,6 +39,8 @@ int main(int argc, char const *argv[])
 	int fd_max = 0;
 	fd_set readfs;
 
+	int bouncer = 0;
+	char *char_ptr = NULL;
 
 	if (argc != 2)
 	{
@@ -93,7 +95,24 @@ int main(int argc, char const *argv[])
 			/* des données sont disponibles sur l'entrée standard' */
 			/* traitement des données */
 
-			fgets(buffer_send, sizeof(buffer_send), stdin);
+			if (fgets(buffer_send, sizeof(buffer_send), stdin) == NULL)
+			{
+				perror("fgets Error : ");
+				exit(errno);
+			}
+
+			char_ptr = strchr(buffer_send, '\n');
+			if (char_ptr != NULL)
+			{
+				*char_ptr = '\0';
+			}
+			else
+			{
+				while (bouncer != '\n' && bouncer != EOF)
+				{
+					bouncer = getchar();
+				}
+			}
 			write_client(client_sock, buffer_send);
 		}
 	}
@@ -144,7 +163,7 @@ int read_client(int sock, char *buffer, size_t buffer_size)
 
 int write_client(int sock, char *buffer)
 {
-	if (send(sock, buffer, strlen(buffer), 0) == SOCKET_ERROR)
+	if (send(sock, buffer, strlen(buffer)+1, 0) == SOCKET_ERROR)	// Le +1 représente le caractère nul
 	{
 		perror("send");
 		exit(errno);
