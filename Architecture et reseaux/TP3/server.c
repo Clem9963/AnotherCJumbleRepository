@@ -1,46 +1,61 @@
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
-#define h_addr h_addr_list[0]
 #define SOCKET_ERROR -1 /* code d'erreur des sockets  */
+#define MAX_CLIENTS 10 /* Nombre de clients maximum  */
 #define TRUE 1
 #define FALSE 0
 
-int init_server(int port);
-int read_client(int sock, char *buffer, size_t buffer_size);
-int write_client(int sock, char *buffer);
+struct Client
+{
+	char username[16];
+	int csock;
+};
+
+/* Fonction d'initialisation*/
+int listen_socket(int port);
+
+/* Gestion des clients */
+struct Client new_client(int ssock, int *nb_c, int *max_fd);
+void rmv_client(struct Client *clients, int i_to_remove, int *nb_c, int *max_fd, int server_sock);
+
+/* Envoi et réception */
+int recv_client(int sock, char *buffer, size_t buffer_size);
+int send_client(int sock, char *buffer);
+
+/* Fonction annexe */
 int max(int a, int b);
 
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
 	/* La fonction main attend 1 paramètre :
 	-> Le port du serveur */
 
-	char buffer_send[1024] = "";
-	char buffer_recv[1024] = "";	
-	
-	char *username = NULL;
-	int port = 0;
+	char buffer[1000] = "";				// Buffer de 1000 octets pour les données brutes car ajout, par la suite, du nom d'utilisateur
+	char buffer_s[1024] = "";			// Buffer de 1024 pour le broadcast : message formaté avec nom d'utilisateur
+	struct Client clients[MAX_CLIENTS];
+	int clients_nb = 0;
 
+	int port = 0;
 	int server_sock = 0;
-	int client_sock = 0;
-	struct sockaddr_in client_sin;
-	socklen_t client_sinsize = sizeof(client_sin);
 
 	int selector = 0;
-	int fd_max = 0;
+	int max_fd = 0;
 	fd_set readfs;
 
-	int bouncer = 0;
+	int reset = 0;
 	char *char_ptr = NULL;
+
+	int i = 0;
+	int j = 0;
 
 	if (argc != 2)
 	{
@@ -50,84 +65,119 @@ int main(int argc, char const *argv[])
 
 	port = atoi(argv[1]);
 
-	server_sock = init_server(port);
+	server_sock = listen_socket(port);
+	max_fd = server_sock;
 
 	while(TRUE)
 	{
 		FD_ZERO(&readfs);
 		FD_SET(server_sock, &readfs);
-		FD_SET(client_sock, &readfs);
 		FD_SET(STDIN_FILENO, &readfs);
-
-		fd_max = max(max(server_sock, client_sock), STDIN_FILENO);
-		
-		if((selector = select(fd_max + 1, &readfs, NULL, NULL, NULL)) < 0)
+		for (i = 0; i < clients_nb; i++)
 		{
-			perror("select Error : ");
-			exit(errno);
+			FD_SET(clients[i].csock, &readfs);
 		}
 
-		/*if(selector == 0)
+		if((selector = select(max_fd + 1, &readfs, NULL, NULL, NULL)) < 0)
 		{
-			 // ici le code si la temporisation (dernier argument) est écoulée (il faut bien évidemment avoir mis quelque chose en dernier argument). 
-		}*/
-		
+			perror("select error");
+			exit(errno);
+		}
 		
 		if(FD_ISSET(server_sock, &readfs))
 		{
-			/* des données sont disponibles sur le socket du serveur */
-			/* traitement des données */
+			/* Des données sont disponibles sur le socket du serveur */
 
-			client_sock = accept(server_sock, (struct sockaddr *)&client_sin, &client_sinsize); /* accepter un client */
+			/* Même si clients_nb et modifié par la fonction, c'est toujours l'ancienne valeur qui est prise en compte lors de l'affectation */
+			clients[clients_nb] = new_client(server_sock, &clients_nb, &max_fd);
+			buffer_s[0] = '\0';
+			strcat(buffer_s, "Connexion de ");
+			strcat(buffer_s, clients[clients_nb-1].username);
+			printf("%s\n", buffer_s);
+			for (j = 0; j < clients_nb; j++)
+			{	
+				send_client(clients[j].csock, buffer_s);
+			}
 		}
 
-		if(FD_ISSET(client_sock, &readfs))
+		for (i = 0; i < clients_nb; i++)
 		{
-			/* des données sont disponibles sur le socket client */
-			/* traitement des données */
+			if(FD_ISSET(clients[i].csock, &readfs))
+			{
+				/* Des données sont disponibles sur un des sockets clients */
 
-			read_client(client_sock, buffer_recv, sizeof(buffer_recv));
-			printf("%s\n", buffer_recv);
+				if (!recv_client(clients[i].csock, buffer, sizeof(buffer)))
+				{
+					buffer_s[0] = '\0';
+					strcat(buffer_s, "Déconnexion de ");
+					strcat(buffer_s, clients[i].username);
+					printf("%s\n", buffer_s);
+					for (j = 0; j < clients_nb; j++)
+					{	
+						send_client(clients[j].csock, buffer_s);
+					}
+					rmv_client(clients, i, &clients_nb, &max_fd, server_sock);
+				}
+				else	// Ce qui se trouvait dans le buffer du client est tout de même envoyé, d'où le "else"
+				{
+					buffer_s[0] = '\0';
+					strcat(buffer_s, clients[i].username);
+					strcat(buffer_s, " : ");
+					strcat(buffer_s, buffer);
+					printf("%s\n", buffer_s);
+					for (j = 0; j < clients_nb; j++)
+					{	
+						send_client(clients[j].csock, buffer_s);
+					}
+				}
+			}
 		}
 
 		if(FD_ISSET(STDIN_FILENO, &readfs))
 		{
-			/* des données sont disponibles sur l'entrée standard' */
-			/* traitement des données */
+			/* Des données sont disponibles sur l'entrée standard */
 
-			if (fgets(buffer_send, sizeof(buffer_send), stdin) == NULL)
+			if (fgets(buffer, sizeof(buffer), stdin) == NULL)
 			{
-				perror("fgets Error : ");
+				perror("fgets error");
 				exit(errno);
 			}
 
-			char_ptr = strchr(buffer_send, '\n');
+			char_ptr = strchr(buffer, '\n');
 			if (char_ptr != NULL)
 			{
 				*char_ptr = '\0';
 			}
 			else
 			{
-				while (bouncer != '\n' && bouncer != EOF)
+				while (reset != '\n' && reset != EOF)
 				{
-					bouncer = getchar();
+					reset = getchar();
 				}
 			}
-			write_client(client_sock, buffer_send);
+			buffer_s[0] = '\0';
+			strcat(buffer_s, "SERVEUR : ");
+			strcat(buffer_s, buffer);
+			printf("%s\n", buffer_s);
+			for (i = 0; i < clients_nb; i++)
+			{	
+				send_client(clients[i].csock, buffer_s);
+			}
 		}
 	}
 
 	return EXIT_SUCCESS;
 }
 
-int init_server(int port)
+int listen_socket(int port)
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
+	memset(&sin, 0, sizeof(sin));
 	
-	if(sock == SOCKET_ERROR)
+	if (sock == SOCKET_ERROR)
 	{
-		perror("socket()");
+		perror("socket error");
 		exit(errno);
 	}
 
@@ -137,44 +187,100 @@ int init_server(int port)
 
 	if (bind(sock, (struct sockaddr*) &sin, sizeof(sin)) == SOCKET_ERROR) /* on lie le socket à sin */
 	{
-		perror("bind()");
+		perror("bind error");
 		exit(errno);
 	}
 
-	if(listen(sock, 1) == SOCKET_ERROR) /* notre socket est prêt à écouter une connexion */
+	if (listen(sock, 1) == SOCKET_ERROR) /* notre socket est prêt à écouter une connexion à la fois */
 	{
-    	perror("listen()");
+    	perror("listen error");
     	exit(errno);
 	}
 
 	return sock;
 }
 
-int read_client(int sock, char *buffer, size_t buffer_size)
+struct Client new_client(int ssock, int *nb_c, int *max_fd)
 {
-	if (recv(sock, buffer, buffer_size, 0) == SOCKET_ERROR)
+	int csock = 0;
+	struct sockaddr_in csin;
+	socklen_t sinsize = sizeof(csin); /* socket client */
+
+	char username[16] = "";
+
+	memset(&csin, 0, sizeof(csin));;
+	csock = accept(ssock, (struct sockaddr *)&csin, &sinsize); /* accepter un client */
+	if (csock == SOCKET_ERROR)
 	{
-		perror("recv");
+		perror("accept error");
+		exit(errno);
+	}
+	*nb_c += 1;
+	*max_fd = max(csock, *max_fd);
+
+	if (recv(csock, username, 16, 0) == SOCKET_ERROR)
+	{
+		perror("recv error");
 		exit(errno);
 	}
 
-	return EXIT_SUCCESS;
+	username[15] = '\0';	// On s'assure que le username ne fasse pas plus de 16 caractères
+	struct Client client = {"", 0};
+	client.csock = csock;
+	strcpy(client.username, username);
+
+	return client;
 }
 
-int write_client(int sock, char *buffer)
+void rmv_client(struct Client *clients, int i_to_remove, int *nb_c, int *max_fd, int server_sock)
+{
+	int i = 0;
+
+	close(clients[i_to_remove].csock);
+	for (i = i_to_remove; i < *nb_c-1; i++)
+	{
+		clients[i] = clients[i+1];
+	}
+
+	*nb_c -= 1;
+	*max_fd = server_sock;
+	for (i = 0; i < *nb_c; i++)
+	{
+		*max_fd = max(*max_fd, clients[i].csock);
+	}
+}
+
+int recv_client(int sock, char *buffer, size_t buffer_size)
+{
+	ssize_t recv_outcome = 0;
+	recv_outcome = recv(sock, buffer, buffer_size, 0);
+	if (recv_outcome == SOCKET_ERROR)
+	{
+		perror("recv error");
+		exit(errno);
+	}
+	else if (recv_outcome == 0)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+int send_client(int sock, char *buffer)
 {
 	if (send(sock, buffer, strlen(buffer)+1, 0) == SOCKET_ERROR)	// Le +1 représente le caractère nul
 	{
-		perror("send");
+		perror("send error");
 		exit(errno);
 	}
 
-	return EXIT_SUCCESS;
+	return TRUE;
 }
 
 int max(int a, int b)
 {
-	if (a > b)
+	if (a >= b)
 	{
 		return a;
 	}
