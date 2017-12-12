@@ -13,9 +13,12 @@
 #define TRUE 1
 #define FALSE 0
 
+/* Fonction d'initialisation */
 int connect_socket(char* address, int port);
-int read_server(int sock, char *buffer, size_t buffer_size);
-int write_server(int sock, char *buffer);
+
+/* Fonctions liées à l'envoi et à la réception */
+int recv_server(int sock, char *buffer, size_t buffer_size);
+int send_server(int sock, char *buffer);
 
 int main(int argc, char *argv[])
 {
@@ -24,7 +27,7 @@ int main(int argc, char *argv[])
 	-> L'adresse IP du serveur
 	-> Le port du serveur */
 
-	char buffer[1000] = "";
+	char buffer[1000] = "";		// Buffer de 1000 octets pour les données brutes car ajout, par la suite, du nom d'utilisateur par le serveur
 
 	char *username = NULL;
 	char *address = NULL;
@@ -34,7 +37,7 @@ int main(int argc, char *argv[])
 	int selector = 0;
 	fd_set readfs;
 
-	int bouncer = 0;
+	int reset = 0;
 	char *char_ptr = NULL;
 
 	if (argc != 4)
@@ -44,13 +47,16 @@ int main(int argc, char *argv[])
 	}
 
 	username = argv[1];
-	username[15] = '\0';	// Pas de pseudo trop long !
+	if (strlen(username) > 15)
+	{
+		username[15] = '\0';	// Pas de pseudo trop long !
+	}
 	address = argv[2];
 	port = atoi(argv[3]);
 
 	server_sock = connect_socket(address, port);
 
-	write_server(server_sock, username);
+	send_server(server_sock, username);
 
 	while(TRUE)
 	{
@@ -68,11 +74,11 @@ int main(int argc, char *argv[])
 		{
 			/* Des données sont disponibles sur le socket du serveur */
 
-			if (!read_server(server_sock, buffer, sizeof(buffer)))
+			if (!recv_server(server_sock, buffer, sizeof(buffer)))
 			{
 				printf("Le serveur n'est plus joignable\n");
 				close(server_sock);
-				exit(0);
+				exit(EXIT_SUCCESS);
 			}
 			else
 			{
@@ -86,7 +92,7 @@ int main(int argc, char *argv[])
 
 			if (fgets(buffer, sizeof(buffer), stdin) == NULL)
 			{
-				perror("fgets Error : ");
+				perror("fgets error");
 				exit(errno);
 			}
 
@@ -97,12 +103,12 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				while (bouncer != '\n' && bouncer != EOF)
+				while (reset != '\n' && reset != EOF)
 				{
-					bouncer = getchar();
+					reset = getchar();
 				}
 			}
-			write_server(server_sock, buffer);
+			send_server(server_sock, buffer);
 		}
 	}
 
@@ -112,6 +118,8 @@ int main(int argc, char *argv[])
 int connect_socket(char* address, int port)
 {
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	struct hostent* hostinfo;
+	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
 
 	if(sock == SOCKET_ERROR)
 	{
@@ -119,32 +127,30 @@ int connect_socket(char* address, int port)
 		exit(errno);
 	}
 
-	struct hostent* hostinfo = gethostbyname(address); /* infos du serveur */
+	hostinfo = gethostbyname(address); /* infos du serveur */
 
 	if (hostinfo == NULL) /* gethostbyname n'a pas trouvé le serveur */
 	{
-		perror("gethostbyname error");
-		exit(errno);
+		herror("gethostbyname");
+        exit(errno);
 	}
 
 	printf("Connexion à %u.%u.%u.%u\n", hostinfo->h_addr[0], hostinfo->h_addr[1], hostinfo->h_addr[2], hostinfo->h_addr[3]);
-
-	struct sockaddr_in sin; /* structure qui possède toutes les infos pour le socket */
 
 	sin.sin_addr = *(struct in_addr*) hostinfo->h_addr; /* on spécifie l'adresse */
 	sin.sin_port = htons(port); /* le port */
 	sin.sin_family = AF_INET; /* et le protocole (AF_INET pour IP) */
 
-	if (connect(sock, (struct sockaddr*) &sin, sizeof(struct sockaddr)) == SOCKET_ERROR) /* demande de connection */
+	if (connect(sock, (struct sockaddr*) &sin, sizeof(struct sockaddr)) == SOCKET_ERROR) /* demande de connexion */
 	{
-		perror("connect");
+		perror("connect error");
 		exit(errno);
 	}
 
 	return sock;
 }
 
-int read_server(int sock, char *buffer, size_t buffer_size)
+int recv_server(int sock, char *buffer, size_t buffer_size)
 {
 	ssize_t recv_outcome = 0;
 	recv_outcome = recv(sock, buffer, buffer_size, 0);
@@ -161,11 +167,11 @@ int read_server(int sock, char *buffer, size_t buffer_size)
 	return TRUE;
 }
 
-int write_server(int sock, char *buffer)
+int send_server(int sock, char *buffer)
 {
 	if (send(sock, buffer, strlen(buffer)+1, 0) == SOCKET_ERROR) 	// Le +1 représente le caractère nul
 	{
-		perror("send");
+		perror("send error");
 		exit(errno);
 	}
 
