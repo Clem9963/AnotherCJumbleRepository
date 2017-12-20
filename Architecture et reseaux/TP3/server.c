@@ -10,6 +10,8 @@
 
 #define SOCKET_ERROR -1 /* code d'erreur des sockets  */
 #define MAX_CLIENTS 10 /* Nombre de clients maximum  */
+#define BUFFER_SIZE 1024
+#define FORMATTING_BUFFER_SIZE 1048
 #define TRUE 1
 #define FALSE 0
 
@@ -39,8 +41,8 @@ int main(int argc, char *argv[])
 	/* La fonction main attend 1 paramètre :
 	-> Le port du serveur */
 
-	char buffer[1000] = "";				// Buffer de 1000 octets pour les données brutes car ajout, par la suite, du nom d'utilisateur
-	char buffer_s[1024] = "";			// Buffer de 1024 pour le broadcast : message formaté avec nom d'utilisateur
+	char buffer[BUFFER_SIZE] = "";				// Buffer de 1024 octets pour les données brutes car ajout, par la suite, du nom d'utilisateur
+	char formatting_buffer[FORMATTING_BUFFER_SIZE] = "";			// Buffer de 1048 pour le broadcast : message formaté avec nom d'utilisateur
 	struct Client clients[MAX_CLIENTS];
 	int clients_nb = 0;
 
@@ -90,13 +92,14 @@ int main(int argc, char *argv[])
 
 			/* Même si clients_nb et modifié par la fonction, c'est toujours l'ancienne valeur qui est prise en compte lors de l'affectation */
 			clients[clients_nb] = new_client(server_sock, &clients_nb, &max_fd);
-			buffer_s[0] = '\0';
-			strcat(buffer_s, "Connexion de ");
-			strcat(buffer_s, clients[clients_nb-1].username);
-			printf("%s\n", buffer_s);
+			strcpy(formatting_buffer, "Connexion de ");
+			strcat(formatting_buffer, clients[clients_nb-1].username);
+			formatting_buffer[BUFFER_SIZE-1] = '\0';
+			strcpy(buffer, formatting_buffer);
+			printf("%s\n", buffer);
 			for (j = 0; j < clients_nb; j++)
 			{	
-				send_client(clients[j].csock, buffer_s);
+				send_client(clients[j].csock, buffer);
 			}
 		}
 
@@ -108,26 +111,28 @@ int main(int argc, char *argv[])
 
 				if (!recv_client(clients[i].csock, buffer, sizeof(buffer)))
 				{
-					buffer_s[0] = '\0';
-					strcat(buffer_s, "Déconnexion de ");
-					strcat(buffer_s, clients[i].username);
-					printf("%s\n", buffer_s);
+					strcpy(formatting_buffer, "Déconnexion de ");
+					strcat(formatting_buffer, clients[i].username);
+					formatting_buffer[BUFFER_SIZE-1] = '\0';
+					strcpy(buffer, formatting_buffer);
+					printf("%s\n", buffer);
 					for (j = 0; j < clients_nb; j++)
 					{	
-						send_client(clients[j].csock, buffer_s);
+						send_client(clients[j].csock, buffer);
 					}
 					rmv_client(clients, i, &clients_nb, &max_fd, server_sock);
 				}
 				else	// Ce qui se trouvait dans le buffer du client est tout de même envoyé, d'où le "else"
 				{
-					buffer_s[0] = '\0';
-					strcat(buffer_s, clients[i].username);
-					strcat(buffer_s, " : ");
-					strcat(buffer_s, buffer);
-					printf("%s\n", buffer_s);
+					strcpy(formatting_buffer, clients[i].username);
+					strcat(formatting_buffer, " : ");
+					strcat(formatting_buffer, buffer);
+					formatting_buffer[BUFFER_SIZE-1] = '\0';
+					strcpy(buffer, formatting_buffer);
+					printf("%s\n", buffer);
 					for (j = 0; j < clients_nb; j++)
 					{	
-						send_client(clients[j].csock, buffer_s);
+						send_client(clients[j].csock, buffer);
 					}
 				}
 			}
@@ -155,13 +160,15 @@ int main(int argc, char *argv[])
 					reset = getchar();
 				}
 			}
-			buffer_s[0] = '\0';
-			strcat(buffer_s, "SERVEUR : ");
-			strcat(buffer_s, buffer);
-			printf("%s\n", buffer_s);
+			reset = 0;	// Réinitialisation de reset pour le prochain fgets
+			strcpy(formatting_buffer, "SERVEUR : ");
+			strcat(formatting_buffer, buffer);
+			formatting_buffer[BUFFER_SIZE-1] = '\0';
+			strcpy(buffer, formatting_buffer);
+			printf("%s\n", buffer);
 			for (i = 0; i < clients_nb; i++)
 			{	
-				send_client(clients[i].csock, buffer_s);
+				send_client(clients[i].csock, buffer);
 			}
 		}
 	}

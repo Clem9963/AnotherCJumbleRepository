@@ -10,6 +10,7 @@
 
 #define h_addr h_addr_list[0]
 #define SOCKET_ERROR -1 /* code d'erreur des sockets  */
+#define BUFFER_SIZE 1024
 #define TRUE 1
 #define FALSE 0
 
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
 	-> L'adresse IP du serveur
 	-> Le port du serveur */
 
-	char buffer[1000] = "";		// Buffer de 1000 octets pour les données brutes car ajout, par la suite, du nom d'utilisateur par le serveur
+	char buffer[BUFFER_SIZE] = "";		// Buffer de 1024 octets pour l'envoi et la réception
 
 	char *username = NULL;
 	char *address = NULL;
@@ -108,6 +109,7 @@ int main(int argc, char *argv[])
 					reset = getchar();
 				}
 			}
+			reset = 0;	// Réinitialisation de reset pour le prochain fgets
 			send_server(server_sock, buffer);
 		}
 	}
@@ -135,7 +137,7 @@ int connect_socket(char* address, int port)
         exit(errno);
 	}
 
-	printf("Connexion à %u.%u.%u.%u\n", hostinfo->h_addr[0], hostinfo->h_addr[1], hostinfo->h_addr[2], hostinfo->h_addr[3]);
+	printf("Connexion à %u.%u.%u.%u\n", (hostinfo->h_addr[0]+256)%256, (hostinfo->h_addr[1]+256)%256, (hostinfo->h_addr[2]+256)%256, (hostinfo->h_addr[3]+256)%256);
 
 	sin.sin_addr = *(struct in_addr*) hostinfo->h_addr; /* on spécifie l'adresse */
 	sin.sin_port = htons(port); /* le port */
