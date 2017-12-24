@@ -5,4 +5,4 @@ all:
 	gcc -Wall -Wextra -o VLSM.bin VLSM.c
 
 VLSM :
-	gcc -Wall -Wextra -o VLSM.bin VLSM.c
+	gcc -Wall -Wextra -o VLSM.bin VLSM.c -lm

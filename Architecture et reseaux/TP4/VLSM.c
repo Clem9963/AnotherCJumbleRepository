@@ -1,17 +1,34 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define TAILLE_ADR_CIDR 19
+#define TAILLE_ADR 16
+#define TAILLE_ADR_BIN 33
+
+#define TRUE 1
+#define FALSE 0
+
+/* Manipulations sur les tableaux */
 void trierTableau(int *tab, int taille);
 void afficheTab(int *tab, int taille);
-void convertir(char *adresseIp, char *binEntier);
-void binaire(char *chiffre, char *temp);
-void ajoute(char *binEntier, char *temp);
+
+/* Manipulations sur les adresses IP */
+void extraire_adresse(char *adresse_cidr, char *adresse_dest);
+void dec_en_bin(char *adresse_dec, char *adresse_bin);
+void bin_en_dec(char *adresse_bin, char *adresse_dec);
+
+/* Calculs annexes */
+int calcule_nombre_bits(int nb_hotes);
 
 int main(int argc, char *argv[])
 {
 	/* Le programme prend un réseau en notation CIDR ainsi que la taille des sous-réseaux demandés. */
-	char adresse_reseau_principal[19];
+	char adr_r_principal[TAILLE_ADR_CIDR];
+	char adr_r_principal_sans_cidr[TAILLE_ADR];
+	char adr_r_principal_bin[TAILLE_ADR_BIN];
+	char temp[TAILLE_ADR_BIN];
 	int nb_sous_reseaux;
 	int *tailles_reseaux;
 	int i = 0;
@@ -37,14 +54,16 @@ int main(int argc, char *argv[])
 		tailles_reseaux[i] = atoi(argv[i+2]);
 	}
 
-	strcpy(adresse_reseau_principal, argv[1]);
-	
-	char adresse_reseau_principal_sans_cidr[16] = "192.168.1.0";
-	char adresse_reseau_principal_bin[36] = "";
+	strcpy(adr_r_principal, argv[1]);
 
+	trierTableau(tailles_reseaux, nb_sous_reseaux);
+	afficheTab(tailles_reseaux, nb_sous_reseaux);
+	extraire_adresse(adr_r_principal, adr_r_principal_sans_cidr);
+	dec_en_bin(adr_r_principal_sans_cidr, adr_r_principal_bin);
+	printf("%s\n", adr_r_principal_sans_cidr);
+	printf("%s\n", adr_r_principal_bin);
 
-	convertir(adresse_reseau_principal_sans_cidr, adresse_reseau_principal_bin);
-	printf("%s\n", adresse_reseau_principal_bin);
+	printf("%d\n", calcule_nombre_bits(63));
 
 	return EXIT_SUCCESS;
 }
@@ -79,58 +98,86 @@ void afficheTab(int *tab, int taille)
 	}
 }
 
-void convertir(char *adresseIp, char *binEntier)
+void extraire_adresse(char *adresse_cidr, char *adresse_dest)
 {
-	int i, j = 0;
-	char chiffre[4];
-	char temp[8];
-	int compteurPoint = 0;
-	
-	for(i = 0; i < 16; i++)
+	int i = 0;
+	for (i = 0; (i < (int)strlen(adresse_cidr) + 1) && adresse_cidr[i] != '/' ; i++)
 	{
-		if (adresseIp[i] == '\0')
+		adresse_dest[i] = adresse_cidr[i];
+	}
+	adresse_dest[i] = '\0';
+}
+
+void dec_en_bin(char *adresse_dec, char *adresse_bin)
+{
+	char adresse_dec_copie[TAILLE_ADR];
+	char *token = NULL;
+	int nb_dec = 0;
+	int nb_bin = 0;
+	int num_nb = 0;
+	int i = 0;
+
+	strcpy(adresse_dec_copie, adresse_dec);
+
+	for (i = 0; i < TAILLE_ADR_BIN; i++)
+	{
+		adresse_bin[i] = '0';
+	}
+	
+	/* Récupération du premier token */
+	token = strtok(adresse_dec_copie, ".");
+	
+	/* Parcours des autres */
+	while(token != NULL)
+	{
+		i = 0;
+		nb_dec = atoi(token);
+		nb_bin = 0;
+		while (nb_dec > 0)
 		{
-			   chiffre[3] = '\0';
-			binaire(chiffre, temp);
-			ajoute(binEntier, temp);
-			binEntier[35] = '\0';
-			break;
+			nb_bin += (nb_dec % 2) * pow(10, i);
+			i++;
+			nb_dec /= 2;
 		}
-		if(adresseIp[i] != '.')
+
+		if (nb_bin < 10000000)
 		{
-			chiffre[j] = adresseIp[i];
-			j++;
+			nb_bin += 10000000;
+			sprintf(adresse_bin + 8 * num_nb, "%d", nb_bin);
+			*(adresse_bin + 8 * num_nb) = '0';
 		}
-	   
 		else
 		{
-			   chiffre[3] = '\0';
-			binaire(chiffre, temp);
-			ajoute(binEntier, temp);
-			j = 0;
-			chiffre[0] = ' ';
-			chiffre[1] = ' ';
-			chiffre[2] = ' ';
-			compteurPoint++;
+			sprintf(adresse_bin + 8 * num_nb, "%d", nb_bin);
 		}
-	}
-}
-
-void binaire(char *chiffre, char *temp){
-	int ch = atoi(chiffre);
-	int i = 0;
-	char nb[] = "00000000";
 	
-	for(i = 7; i >= 0 ;i--)
-	{
-		nb[i] = (ch % 2) + '0';
-		ch = ch / 2;
-	}
-	strcpy(temp, nb);
+		token = strtok(NULL, ".");
+		num_nb++;
+	} 
 }
 
-void ajoute(char *binEntier, char *temp)
+void bin_en_dec(char *adresse_bin, char *adresse_dec)
 {
-	strcat(binEntier, temp);
-	strcat(binEntier, ".");
+	int i = 0;
+	int nb_temp[4] = {0};
+
+	for (i = 0; i < TAILLE_ADR_BIN; i++)
+	{
+		nb_temp[i/8] += pow(2, 7 - i % 8) * (adresse_bin[i] - '0');
+	}
+
+	sprintf(adresse_dec, "%d.%d.%d.%d", nb_temp[0], nb_temp[1], nb_temp[2], nb_temp[3]);
+}
+
+int calcule_nombre_bits(int nb_hotes)
+{
+	nb_hotes += 2;
+	int i = 0;
+
+	for (i = 0; i < 32 && pow(2, i) < nb_hotes; i++)
+	{
+		continue;
+	}
+
+	return i;
 }
