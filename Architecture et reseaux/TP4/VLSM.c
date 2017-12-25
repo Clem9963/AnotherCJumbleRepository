@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Adresse fournie incorrecte\n");
 		exit(EXIT_FAILURE);
 	}
-	if (strchr(adr_r_principal, '/') == NULL)
+	if (strchr(argv[1], '/') == NULL)
 	{
 		fprintf(stderr, "Le masque n'est pas renseigné\n");
 		exit(EXIT_FAILURE);
@@ -77,7 +77,6 @@ int main(int argc, char *argv[])
 	dec_en_bin(adr_r_principal_sans_cidr, adr_r_principal_bin_backup);
 
 	masque = atoi(strchr(adr_r_principal, '/') + 1);
-	printf("%d\n", masque);
 
 	printf("N° sous-réseau\t");
 	printf("Masque du sous-réseau\t");
@@ -129,11 +128,11 @@ int main(int argc, char *argv[])
 
 	if (success)
 	{
-		printf("\n\nDécoupage réussi\n");
+		printf("\n\nDécoupage réussi !!\n");
 	}
 	else
 	{
-		printf("\n\nDécoupage échoué\n");
+		printf("\n\nDécoupage échoué !!\n");
 	}
 
 	return EXIT_SUCCESS;
