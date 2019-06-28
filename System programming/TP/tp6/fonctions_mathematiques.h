@@ -1,0 +1,6 @@
+#ifndef FONCTIONS_MATHEMATIQUES_H_INCLUDED
+#define FONCTIONS_MATHEMATIQUES_H_INCLUDED
+
+int mul2(int n);
+
+#endif
