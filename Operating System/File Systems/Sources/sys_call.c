@@ -1,6 +1,6 @@
-#include "sys_fic.h"
-#include "descripteur.h"
-#include "appel_sys.h"
+#include "file_sys.h"
+#include "descriptor.h"
+#include "sys_call.h"
 
 int createFile(FileSystem *fs, char *name)
 {

@@ -1,2 +1,2 @@
-listes: listes.c
-	gcc -Wall -Wextra -o listes.bin listes.c
+lists: lists.c
+	gcc -Wall -Wextra -o lists.bin lists.c

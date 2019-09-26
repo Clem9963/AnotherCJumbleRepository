@@ -1,2 +1,2 @@
-all: td5.c
-	gcc -Wall -Wextra -o td5 td5.c
+all: swears.c
+	gcc -Wall -Wextra -o swears swears.c

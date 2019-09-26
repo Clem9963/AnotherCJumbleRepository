@@ -1,5 +1,5 @@
-#include "sys_fic.h"
-#include "descripteur.h"
+#include "file_sys.h"
+#include "descriptor.h"
 
 Descriptor* initDesciptor(FileSystem *fs, int inode_index)
 {
@@ -36,7 +36,7 @@ void freeDescriptor(Descriptor *fd)
 	}
 	else
 	{
-		fprintf(stderr, "Erreur dans freeDescriptor : Le descripteur fourni en paramètre n'est pas valide.\nIl a peut-être déjà été libéré.\n");
+		fprintf(stderr, "Erreur dans freeDescriptor : Le descriptor fourni en paramètre n'est pas valide.\nIl a peut-être déjà été libéré.\n");
 	}
 }
 

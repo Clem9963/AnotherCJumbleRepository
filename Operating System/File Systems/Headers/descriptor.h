@@ -1,5 +1,5 @@
-#ifndef DESCRIPTEUR_H_INCLUDED
-#define DESCRIPTEUR_H_INCLUDED
+#ifndef descriptor_H_INCLUDED
+#define descriptor_H_INCLUDED
 
 #include <stdint.h>
 #include <stdio.h>
@@ -30,13 +30,13 @@ typedef struct Descriptor Descriptor;
 /* PROTOTYPES DES FONCTIONS */
 
 Descriptor* initDesciptor(FileSystem *fs, int inode_index);
-/* Retourne un descripteur alloué dynamiquement pour le fichier pointé par l'inode d'indice "inode_index" dans "fs" */
+/* Retourne un descriptor alloué dynamiquement pour le fichier pointé par l'inode d'indice "inode_index" dans "fs" */
 
 void freeDescriptor(Descriptor *fd);
-/* Libère toute la mémoire allouée pour le descripteur "fd". */
+/* Libère toute la mémoire allouée pour le descriptor "fd". */
 
 void updateCache(FileSystem *fs, Descriptor* fd);
-/* Met à jour le cache du descripteur de fichiers "fd" en fonction du numéro du bloc courant */
+/* Met à jour le cache du descriptor de fichiers "fd" en fonction du numéro du bloc courant */
 
 void dseek(FileSystem *fs, Descriptor* fd, off_t offset, int whence);
 /* Change le décalage courant ("offset") et/ou le bloc courant ("current_block_number") dans le descipteur de fichiers "fd".
@@ -60,12 +60,12 @@ size_t dwrite(FileSystem *fs, Descriptor *fd, uint8_t *src, size_t length);
 /* LES FONCTIONS SUIVANTES NE DOIVENT ETRE UTILISEES QUE POUR LE DEBUG */
 
 void dreadFullBlock(uint8_t *dest, FileSystem *fs, Descriptor* fd, uint8_t block_number);
-/* Lis le bloc numéro "block_number" du fichier dont le descripteur est "fd", dans le système de fichiers "fs".
+/* Lis le bloc numéro "block_number" du fichier dont le descriptor est "fd", dans le système de fichiers "fs".
 La destination est "dest". A noter que cette fonction sert surtout pour le debug !
 /!\ Aucune allocation dynamique n'est faite dans cette fonction. */
 
 void dwriteFullBlock(uint8_t *src, FileSystem *fs, Descriptor* fd, uint8_t block_number);
-/* Ecris les octets du tableau "src" dans le bloc numéro "block_number" du fichier dont le descripteur est "fd", dans le système de fichiers "fs".
+/* Ecris les octets du tableau "src" dans le bloc numéro "block_number" du fichier dont le descriptor est "fd", dans le système de fichiers "fs".
 A noter que cette fonction sert surtout pour le debug ! */
 
 

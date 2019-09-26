@@ -8,30 +8,30 @@
 #define TRUE 1
 #define FALSE 0
 
-void lire_vecteur_a();
+void lire_vector_a();
 off_t rembobiner(int descripteur_fichier);
 size_t lire_longueur_fichier(int descripteur_fichier);
-void nombre_element_vecteur(int fichier_vec, size_t *longueur_fichier, unsigned int *n_elements);
-void lire_fichier_vec(int fichier_vec, double **vecteur, unsigned int *n_elements);
+void nombre_element_vector(int fichier_vec, size_t *longueur_fichier, unsigned int *n_elements);
+void lire_fichier_vec(int fichier_vec, double **vector, unsigned int *n_elements);
 
 int main()
 {
-	char pathname[16] = "./vecteur_a.vec";
+	char pathname[16] = "./vector_a.vec";
 	int fd;
 
 	fd = open(pathname, O_RDONLY);
 
 	size_t longueur_fichier;
 	unsigned int n_elements;
-	nombre_element_vecteur(fd, &longueur_fichier, &n_elements);
+	nombre_element_vector(fd, &longueur_fichier, &n_elements);
 	printf("%lu %d\n", longueur_fichier, n_elements);
 
 	return EXIT_SUCCESS;
 }
 
-void lire_vecteur_a()
+void lire_vector_a()
 {
-	char pathname[16] = "./vecteur_a.vec";
+	char pathname[16] = "./vector_a.vec";
 	char buffer;
 	int fd;
 	int continuer = TRUE;
@@ -75,7 +75,7 @@ size_t lire_longueur_fichier(int descripteur_fichier)
 	return (size_t)taille;
 }
 
-void nombre_element_vecteur(int fichier_vec, size_t *longueur_fichier, unsigned int *n_elements)
+void nombre_element_vector(int fichier_vec, size_t *longueur_fichier, unsigned int *n_elements)
 {
 	int continuer = TRUE;
 	int nb_virgules = 0;
@@ -105,7 +105,7 @@ void nombre_element_vecteur(int fichier_vec, size_t *longueur_fichier, unsigned 
 	*n_elements = nb_virgules + 1;
 }
 
-void lire_fichier_vec(int fichier_vec, double **vecteur, unsigned int *n_elements)
+void lire_fichier_vec(int fichier_vec, double **vector, unsigned int *n_elements)
 {
 	size_t longueur_fichier;
 	char buffer_char;
@@ -113,15 +113,15 @@ void lire_fichier_vec(int fichier_vec, double **vecteur, unsigned int *n_element
 	int continuer = TRUE;
 	int indice_matrice = 0;
 	int indice = 0;
-	nombre_element_vecteur(fichier_vec, &longueur_fichier, n_elements);
+	nombre_element_vector(fichier_vec, &longueur_fichier, n_elements);
 
-	*vecteur = calloc(*n_elements, sizeof(double));
+	*vector = calloc(*n_elements, sizeof(double));
 
 	while(continuer)
 	{
 		if (indice == -1)
 		{
-			*vecteur[indice_matrice] = strtod(buffer_str, NULL);
+			*vector[indice_matrice] = strtod(buffer_str, NULL);
 		}
 
 		switch (read(fichier_vec, &buffer_char, 1))

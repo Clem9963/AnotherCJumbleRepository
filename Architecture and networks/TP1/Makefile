@@ -1,2 +1,2 @@
-all: tp1.c
-	gcc -Wall -Wextra -o executable.bin tp1.c
+all: main.c
+	gcc -Wall -Wextra -o executable.bin main.c

@@ -1,5 +1,5 @@
-#ifndef APPEL_SYS_H_INCLUDED
-#define APPEL_SYS_H_INCLUDED
+#ifndef sys_call_H_INCLUDED
+#define sys_call_H_INCLUDED
 
 #include <stdint.h>
 #include <stdio.h>
@@ -25,7 +25,7 @@ Retourne -1 en cas d'échec. */
 
 Descriptor* openFile(FileSystem *fs, char *name);
 /* Ouvre le fichier dont le nom est "name" dans le système de fichiers "fs". Ne pas oublier de le fermer avec la fonction closeFile par la suite.
-La fonction retourne un pointeur sur le descripteur de fichier nouvellement alloué pour le fichier demandé. */
+La fonction retourne un pointeur sur le descriptor de fichier nouvellement alloué pour le fichier demandé. */
 
 void seekInFile(FileSystem *fs, Descriptor* fd, off_t offset, int whence);
 /* Change le décalage courant ("offset") et/ou le bloc courant ("current_block_number") dans le descipteur de fichiers "fd".
@@ -47,8 +47,8 @@ size_t writeFile(FileSystem *fs, Descriptor *fd, uint8_t *src, size_t length);
 "src" est le tableau source. */
 
 void closeFile(Descriptor *fd);
-/* Ferme le fichier dont le descripteur est "fd".
-La mémoire allouée pour le descripteur dans openFile est libérée dans cette fonction. */
+/* Ferme le fichier dont le descriptor est "fd".
+La mémoire allouée pour le descriptor dans openFile est libérée dans cette fonction. */
 
 
 #endif
